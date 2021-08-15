@@ -1,8 +1,9 @@
 import torch
 import numpy as np
-import buffers
 import copy
 import gym
+
+from agents.buffers import DiscreteActionSpaceBuffer
 
 
 class DQNAgent():
@@ -38,7 +39,7 @@ class DQNAgent():
         self._target_network_update_per_step = target_network_update_per_step
 
         # create buffer
-        self._buffer = buffers.DiscreteActionSpaceBuffer(env.observation_space.shape,
+        self._buffer = DiscreteActionSpaceBuffer(env.observation_space.shape,
                                                          env.action_space.n,
                                                          self._buffer_size)
 
@@ -144,7 +145,6 @@ if __name__ == "__main__":
             state = next_state
 
             total_steps += 1
-
             dqn_agent.train()
 
         print(f"Episode {episode}, total reward {total_reward}, total steps {total_steps}")
