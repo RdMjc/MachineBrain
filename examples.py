@@ -63,7 +63,8 @@ def DDPGexample():
     env = gym.make("LunarLanderContinuous-v2")
 
     agent = agents.ddpg.DDPGAgent(env=env, gamma=0.99, q_learning_rate=0.001, policy_learning_rate=0.0001,
-                                  batch_size=64, buffer_size=100000, noise=0.1, polyak=0.95)
+                                  batch_size=64, buffer_size=100000, noise=0.5, noise_decay_rate=0.99,
+                                  polyak=0.95)
 
     episodes = 10000
     for episode in range(episodes):

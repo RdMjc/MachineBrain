@@ -68,6 +68,7 @@ class DDPGAgent():
                  batch_size,
                  buffer_size,
                  noise,
+                 noise_decay_rate,
                  polyak):
         """
         Implements Deep Deterministic Policy Gradient Algorithm.
@@ -84,6 +85,7 @@ class DDPGAgent():
         :param batch_size: Batch size to use in training phase
         :param buffer_size: The size of the experience replay buffer
         :param noise: The standard deviation of the noise which will be added to actions in training time for exploration
+        :param noise_decay_rate: The rate which the noise will decay during training (It is applied after each run of train method)
         :param polyak: The parameters which determines the copying rate of online network weights to target network weights
         """
 
@@ -97,6 +99,7 @@ class DDPGAgent():
         self._buffer_size = buffer_size
 
         self._noise = noise
+        self._noise_decay_rate = noise_decay_rate
         self._polyak = polyak
 
         # create buffer
@@ -176,6 +179,9 @@ class DDPGAgent():
 
         # update target network weights
         self._update_target_network_weights()
+
+        # update noise
+        self._noise *= self._noise_decay_rate
 
     def store_transition(self, state, action, next_state, reward, done):
         self._buffer.store_transition(state, action, next_state, reward, done)
