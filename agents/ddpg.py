@@ -62,6 +62,7 @@ class PolicyNetwork(torch.nn.Module):
 class DDPGAgent():
     def __init__(self,
                  env,
+                 gamma,
                  q_learning_rate,
                  policy_learning_rate,
                  batch_size,
@@ -77,6 +78,7 @@ class DDPGAgent():
         arXiv preprint arXiv:1509.02971 (2015).
 
         :param env: The GYM environment of the problem
+        :param gamma: Discount rate
         :param q_learning_rate: Learning rate of Q function
         :param policy_learning_rate: Learning rate of policy
         :param batch_size: Batch size to use in training phase
@@ -86,6 +88,7 @@ class DDPGAgent():
         """
 
         self._env = env
+        self._gamma = gamma
 
         self._q_learning_rate = q_learning_rate
         self._policy_learning_rate = policy_learning_rate
@@ -96,5 +99,55 @@ class DDPGAgent():
         self._noise = noise
         self._polyak = polyak
 
-        self._q_network = QNetwork(self._env.observation_space.shape[0], self._env.action_space.shape[0])
+        # create buffer
+        self._buffer = ContinuousActionSpaceBuffer(self._env.observation_space.shape,
+                                                   self._env.action_space.shape,
+                                                   self._buffer_size)
+
+        # create Q network and its target
+        self._q_network = QNetwork(self._env.observation_space.shape[0],
+                                   self._env.action_space.shape[0],
+                                   learning_rate=self._q_learning_rate)
         self._q_network_target = copy.deepcopy(self._q_network)
+
+        # create policy network and its target
+        self._policy_network = PolicyNetwork(self._env.observation_space.shape[0],
+                                             self._env.action_space.shape[0],
+                                             learning_rate=self._policy_learning_rate)
+        self._policy_network_target = copy.deepcopy(self._policy_network)
+
+
+        # initialize training counter
+        self._train_counter = 0
+
+    def choose_action(self, state, training=False):
+        state = state[np.newaxis, :]
+        state = torch.from_numpy(state.astype(np.float32))
+        # if training
+        if training:
+            # push action into policy network
+            action = self._policy_network(state)[0]
+
+            # add gaussian noise
+            action = action + torch.normal(0, self._noise, size=action.shape)
+
+            # clip final action into environment action low-high boundary
+            low = torch.from_numpy(self._env.action_space.low)
+            high = torch.from_numpy(self._env.action_space.high)
+            action = torch.clip(action, min=low, max=high)
+
+            return action.detach().numpy()
+        else:
+            # no need for gradient track
+            with torch.no_grad():
+                action = self._policy_network(state)[0]
+            return action.numpy()
+
+    def train(self):
+        pass
+
+    def store_transition(self, state, action, next_state, reward, done):
+        self._buffer.store_transition(state, action, next_state, reward, done)
+
+    def _get_gaussian_noise(self):
+        pass
