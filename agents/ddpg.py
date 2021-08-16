@@ -116,7 +116,6 @@ class DDPGAgent():
                                              learning_rate=self._policy_learning_rate)
         self._policy_network_target = copy.deepcopy(self._policy_network)
 
-
         # initialize training counter
         self._train_counter = 0
 
@@ -144,10 +143,48 @@ class DDPGAgent():
             return action.numpy()
 
     def train(self):
-        pass
+        # check if there as enough samples in the buffer
+        if self._buffer.get_buffer_counter() < self._batch_size:
+            return
+
+        # sample a batch from buffer
+        states, actions, next_states, rewards, dones = self._buffer.sample(self._batch_size)
+
+        # convert to tensors
+        states = torch.from_numpy(states.astype(np.float32))
+        actions = torch.from_numpy(actions.astype(np.float32))
+        next_states = torch.from_numpy(next_states.astype(np.float32))
+        rewards = torch.from_numpy(rewards.astype(np.float32))
+        dones = torch.from_numpy(dones.astype(np.int8))
+
+        # compute targets
+        mu_next_states = self._policy_network_target(next_states)
+        y = rewards + self._gamma * (1 - dones) * (self._q_network_target(next_states, mu_next_states))
+
+        # update Q function
+        loss_fn = torch.nn.MSELoss()
+        loss = loss_fn(y, self._q_network(states, actions))
+        self._q_network.optimizer.zero_grad()
+        loss.backward()
+        self._q_network.optimizer.step()
+
+        # update policy
+        sum = torch.sum(self._q_network(states, self._policy_network(states)))
+        self._policy_network.optimizer.zero_grad()
+        sum.backward()
+        self._policy_network.optimizer.step()
+
+        # update target network weights
+        self._update_target_network_weights()
 
     def store_transition(self, state, action, next_state, reward, done):
         self._buffer.store_transition(state, action, next_state, reward, done)
 
-    def _get_gaussian_noise(self):
-        pass
+    def _update_target_network_weights(self):
+        # copy Q weights
+        for target_network_param, network_param in zip(self._q_network_target.parameters(), self._q_network.parameters()):
+            target_network_param.data.copy_((1 - self._polyak) * network_param.data + self._polyak*target_network_param.data)
+
+        # copy policy weights
+        for target_network_param, network_param in zip(self._policy_network_target.parameters(), self._policy_network.parameters()):
+            target_network_param.data.copy_((1 - self._polyak) * network_param.data + self._polyak*target_network_param.data)
