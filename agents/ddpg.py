@@ -2,20 +2,25 @@ import torch
 import numpy as np
 import copy
 
-from buffers import ContinuousActionSpaceBuffer
+from .buffers import ContinuousActionSpaceBuffer
 
 
 class QNetwork(torch.nn.Module):
-    def __init__(self, state_dim, action_dim):
-
+    def __init__(self, state_dim, action_dim, learning_rate):
+        super().__init__()
         self._state_dim = state_dim
         self._action_dim = action_dim
+        self._learning_rate = learning_rate
 
+        # create layers
         self._fc_layer1 = torch.nn.Linear(self._state_dim + self._action_dim, 128)
         self._activation1 = torch.nn.ReLU()
         self._fc_layer2 = torch.nn.Linear(128, 128)
         self._activation2 = torch.nn.ReLU()
         self._fc_layer3 = torch.nn.Linear(128, 1)
+
+        # create optimizer
+        self.optimizer = torch.optim.SGD(params=self.parameters(), lr=self._learning_rate)
 
     def forward(self, state, action):
         x = torch.cat((state, action), 1)
@@ -28,16 +33,22 @@ class QNetwork(torch.nn.Module):
 
 
 class PolicyNetwork(torch.nn.Module):
-    def __init__(self, state_dim, action_dim):
+    def __init__(self, state_dim, action_dim, learning_rate):
+        super().__init__()
 
         self._state_dim = state_dim
         self._action_dim = action_dim
+        self._learning_rate = learning_rate
 
+        # create layers
         self._fc_layer1 = torch.nn.Linear(self._state_dim, 128)
         self._activation1 = torch.nn.ReLU()
         self._fc_layer2 = torch.nn.Linear(128, 128)
         self._activation2 = torch.nn.ReLU()
         self._fc_layer3 = torch.nn.Linear(128, self._action_dim)
+
+        # create optimizer
+        self.optimizer = torch.optim.SGD(params=self.parameters(), lr=self._learning_rate)
 
     def forward(self, state):
         x = self._fc_layer1(state)
