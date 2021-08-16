@@ -13,9 +13,9 @@ class QNetwork(torch.nn.Module):
         self._learning_rate = learning_rate
 
         # create layers
-        self._fc_layer1 = torch.nn.Linear(self._state_dim + self._action_dim, 128)
+        self._fc_layer1 = torch.nn.Linear(self._state_dim + self._action_dim, 256)
         self._activation1 = torch.nn.ReLU()
-        self._fc_layer2 = torch.nn.Linear(128, 128)
+        self._fc_layer2 = torch.nn.Linear(256, 128)
         self._activation2 = torch.nn.ReLU()
         self._fc_layer3 = torch.nn.Linear(128, 1)
 
@@ -41,9 +41,9 @@ class PolicyNetwork(torch.nn.Module):
         self._learning_rate = learning_rate
 
         # create layers
-        self._fc_layer1 = torch.nn.Linear(self._state_dim, 128)
+        self._fc_layer1 = torch.nn.Linear(self._state_dim, 256)
         self._activation1 = torch.nn.ReLU()
-        self._fc_layer2 = torch.nn.Linear(128, 128)
+        self._fc_layer2 = torch.nn.Linear(256, 128)
         self._activation2 = torch.nn.ReLU()
         self._fc_layer3 = torch.nn.Linear(128, self._action_dim)
 
@@ -169,12 +169,18 @@ class DDPGAgent():
         loss = loss_fn(y, self._q_network(states, actions))
         self._q_network.optimizer.zero_grad()
         loss.backward()
+        # clip gradients to prevent exploding gradients
+        torch.nn.utils.clip_grad_norm_(self._q_network.parameters(), 1)
         self._q_network.optimizer.step()
 
+
+
         # update policy
-        sum = torch.sum(self._q_network(states, self._policy_network(states)))
+        meanval = -torch.mean(self._q_network(states, self._policy_network(states)))
         self._policy_network.optimizer.zero_grad()
-        sum.backward()
+        meanval.backward()
+        # clip gradients to prevent exploding gradients
+        torch.nn.utils.clip_grad_norm_(self._policy_network.parameters(), 1)
         self._policy_network.optimizer.step()
 
         # update target network weights
