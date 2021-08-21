@@ -88,6 +88,7 @@ class TD3Agent():
         :param noise: The standard deviation of the noise which will be added to actions in training time for exploration
         :param noise_decay_rate: The rate which the noise will decay during training (It is applied after each run of train method)
         :param policy_delay: The amount of step required to update policy (per how many steps to update policy)
+        :param policy_noise: The noise STD which is used to smooth target policy
         :param target_noise_clip: "c" in equations (in clipping)
         :param polyak: The parameters which determines the copying rate of online network weights to target network weights
         """
@@ -103,7 +104,6 @@ class TD3Agent():
         self._noise = noise
         self._noise_decay_rate = noise_decay_rate
         self._policy_delay = policy_delay
-        #self._target_noise_clip = torch.from_numpy(target_noise_clip.astype(np.float32))
         self._target_noise_clip = target_noise_clip
         self._policy_noise = policy_noise
         self._polyak = polyak
