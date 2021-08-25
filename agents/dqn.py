@@ -23,6 +23,10 @@ class DQNAgent():
         :param target_network_update_per_step: the number of steps at which the target network is updated to
         have equal weights as actual neural network
         """
+
+        # set device GPU/CPU
+        self._device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
         self._env = env
         self._gamma = gamma
         self._learning_rate = learning_rate
@@ -50,10 +54,11 @@ class DQNAgent():
             torch.nn.Linear(128, 128),
             torch.nn.ReLU(),
             torch.nn.Linear(128, self._env.action_space.n)
-        )
+        ).to(self._device)
 
         # create target Q network
         self._q_network_target = copy.deepcopy(self._q_network)
+        self._q_network_target.to(self._device)
 
         # create optimizer
         self._optimizer = torch.optim.SGD(self._q_network.parameters(), lr=self._learning_rate)
@@ -69,6 +74,7 @@ class DQNAgent():
     def choose_action(self, state, training=False):
         state = state[np.newaxis, :]
         state = torch.from_numpy(state.astype(np.float32))
+        state = state.to(self._device)
         if training:
             rand = np.random.random_sample()
             if rand < self._epsilon:
@@ -89,15 +95,15 @@ class DQNAgent():
         states, actions, next_states, rewards, dones = self._buffer.sample(self._batch_size)
 
         # convert numpy arrays to tensors
-        states = torch.from_numpy(states.astype(np.float32))
-        actions = torch.from_numpy(actions.astype(np.int64))
-        next_states = torch.from_numpy(next_states.astype(np.float32))
-        rewards = torch.from_numpy(rewards.astype(np.float32))
-        dones = torch.from_numpy(dones.astype(np.int8))
+        states = torch.from_numpy(states.astype(np.float32)).to(self._device)
+        actions = torch.from_numpy(actions.astype(np.int64)).to(self._device)
+        next_states = torch.from_numpy(next_states.astype(np.float32)).to(self._device)
+        rewards = torch.from_numpy(rewards.astype(np.float32)).to(self._device)
+        dones = torch.from_numpy(dones.astype(np.int8)).to(self._device)
 
         # get Q(s) and Q(s')
-        q_states = self._q_network(states)
-        q_next_states = self._q_network_target(next_states)
+        q_states = self._q_network(states).to(self._device)
+        q_next_states = self._q_network_target(next_states).to(self._device)
 
         # calculate y = r + gamma * max_over_a (Q(s'))
         max_over_a_q_next_states, _ = torch.max(q_next_states, dim=1, keepdim=True)
