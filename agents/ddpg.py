@@ -140,8 +140,8 @@ class DDPGAgent():
             action = action + torch.normal(0, self._noise, size=action.shape).to(self._device)
 
             # clip final action into environment action low-high boundary
-            low = torch.from_numpy(self._env.action_space.low)
-            high = torch.from_numpy(self._env.action_space.high)
+            low = torch.from_numpy(self._env.action_space.low).to(self._device)
+            high = torch.from_numpy(self._env.action_space.high).to(self._device)
             action = torch.clip(action, min=low, max=high)
 
             return action.detach().numpy()
