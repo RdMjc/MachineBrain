@@ -82,9 +82,9 @@ class DQNAgent():
                 return action
             else:
                 action = np.argmax(self._q_network(state))
-                return action.detach().numpy()
+                return action.detach().cpu().numpy()
         else:
-            return np.argmax(self._q_network(state)).detach().numpy()
+            return np.argmax(self._q_network(state)).detach().cpu().numpy()
 
     def train(self):
         # if there is no enough samples, then don't learn
