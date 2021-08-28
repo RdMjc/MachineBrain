@@ -92,6 +92,8 @@ class TD3Agent():
         :param target_noise_clip: "c" in equations (in clipping)
         :param polyak: The parameters which determines the copying rate of online network weights to target network weights
         """
+        self._device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
         self._env = env
         self._gamma = gamma
 
@@ -116,20 +118,20 @@ class TD3Agent():
         # create Q network 1 and its target
         self._q_network1 = QNetwork(self._env.observation_space.shape[0],
                                    self._env.action_space.shape[0],
-                                   learning_rate=self._q_learning_rate)
-        self._q_network1_target = copy.deepcopy(self._q_network1)
+                                   learning_rate=self._q_learning_rate).to(self._device)
+        self._q_network1_target = copy.deepcopy(self._q_network1).to(self._device)
 
         # create Q network 2 and its target
         self._q_network2 = QNetwork(self._env.observation_space.shape[0],
                                     self._env.action_space.shape[0],
-                                    learning_rate=self._q_learning_rate)
-        self._q_network2_target = copy.deepcopy(self._q_network2)
+                                    learning_rate=self._q_learning_rate).to(self._device)
+        self._q_network2_target = copy.deepcopy(self._q_network2).to(self._device)
 
         # create policy network and its target
         self._policy_network = PolicyNetwork(self._env.observation_space.shape[0],
                                              self._env.action_space.shape[0],
-                                             learning_rate=self._policy_learning_rate)
-        self._policy_network_target = copy.deepcopy(self._policy_network)
+                                             learning_rate=self._policy_learning_rate).to(self._device)
+        self._policy_network_target = copy.deepcopy(self._policy_network).to(self._device)
 
         # initialize training counter
         self._train_counter = 0
@@ -137,6 +139,7 @@ class TD3Agent():
     def choose_action(self, state, uniform_random=False, training=False):
         state = state[np.newaxis, :]
         state = torch.from_numpy(state.astype(np.float32))
+        state = state.to(self._device)
         if uniform_random:
             #action = torch.normal(0.0, high/2, size=(self._env.action_space.shape[0], 1))
             action = np.random.normal(0, self._env.action_space.high/2, size=(self._env.action_space.shape[0]))
@@ -147,19 +150,19 @@ class TD3Agent():
             action = self._policy_network(state)[0]
 
             # add gaussian noise
-            action = action + torch.normal(0, self._noise, size=action.shape)
+            action = action + torch.normal(0, self._noise, size=action.shape).to(self._device)
 
             # clip final action into environment action low-high boundary
-            low = torch.from_numpy(self._env.action_space.low)
-            high = torch.from_numpy(self._env.action_space.high)
+            low = torch.from_numpy(self._env.action_space.low).to(self._device)
+            high = torch.from_numpy(self._env.action_space.high).to(self._device)
             action = torch.clip(action, min=low, max=high)
 
-            return action.detach().numpy()
+            return action.detach().cpu().numpy()
         else:
             # no need for gradient track
             with torch.no_grad():
                 action = self._policy_network(state)[0]
-            return action.numpy()
+            return action.cpu().numpy()
 
     def train(self):
         # check if there as enough samples in the buffer
@@ -170,20 +173,20 @@ class TD3Agent():
         states, actions, next_states, rewards, dones = self._buffer.sample(self._batch_size)
 
         # convert to tensors
-        states = torch.from_numpy(states.astype(np.float32))
-        actions = torch.from_numpy(actions.astype(np.float32))
-        next_states = torch.from_numpy(next_states.astype(np.float32))
-        rewards = torch.from_numpy(rewards.astype(np.float32))
-        dones = torch.from_numpy(dones.astype(np.int8))
+        states = torch.from_numpy(states.astype(np.float32)).to(self._device)
+        actions = torch.from_numpy(actions.astype(np.float32)).to(self._device)
+        next_states = torch.from_numpy(next_states.astype(np.float32)).to(self._device)
+        rewards = torch.from_numpy(rewards.astype(np.float32)).to(self._device)
+        dones = torch.from_numpy(dones.astype(np.int8)).to(self._device)
 
         # compute target actions
         with torch.no_grad():
             mu_ = self._policy_network_target(next_states)
-            noise = torch.rand_like(actions) * self._policy_noise
+            noise = torch.rand_like(actions).to(self._device) * self._policy_noise
             noise.clamp_(-self._target_noise_clip, self._target_noise_clip)
             actions_target = mu_ + noise
-            low = torch.from_numpy(self._env.action_space.low)
-            high = torch.from_numpy(self._env.action_space.high)
+            low = torch.from_numpy(self._env.action_space.low).to(self._device)
+            high = torch.from_numpy(self._env.action_space.high).to(self._device)
             actions_target.clamp_(low, high)
 
             ### compute targets

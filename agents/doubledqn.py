@@ -22,11 +22,11 @@ class DoubleDQNAgent(DQNAgent):
         states, actions, next_states, rewards, dones = self._buffer.sample(self._batch_size)
 
         # convert numpy arrays to tensors
-        states = torch.from_numpy(states.astype(np.float32))
-        actions = torch.from_numpy(actions.astype(np.int64))
-        next_states = torch.from_numpy(next_states.astype(np.float32))
-        rewards = torch.from_numpy(rewards.astype(np.float32))
-        dones = torch.from_numpy(dones.astype(np.int8))
+        states = torch.from_numpy(states.astype(np.float32)).to(self._device)
+        actions = torch.from_numpy(actions.astype(np.int64)).to(self._device)
+        next_states = torch.from_numpy(next_states.astype(np.float32)).to(self._device)
+        rewards = torch.from_numpy(rewards.astype(np.float32)).to(self._device)
+        dones = torch.from_numpy(dones.astype(np.int8)).to(self._device)
 
         ### get Q(s) and Q(s')
         q_states = self._q_network(states)

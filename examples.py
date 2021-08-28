@@ -144,4 +144,4 @@ def TD3example():
 
 
 if __name__ == "__main__":
-    TD3example()
+    DQNexample()
