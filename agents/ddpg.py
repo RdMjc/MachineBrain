@@ -134,9 +134,6 @@ class DDPGAgent():
             action = self._policy_network(state)[0]
 
             # add gaussian noise
-            print(action)
-            print(self._noise)
-            print(torch.normal(0, self._noise, size=action.shape))
             action = action + torch.normal(0, self._noise, size=action.shape).to(self._device)
 
             # clip final action into environment action low-high boundary
