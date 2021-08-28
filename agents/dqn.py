@@ -75,7 +75,7 @@ class DQNAgent():
         state = state[np.newaxis, :]
         state = torch.from_numpy(state.astype(np.float32))
         state = state.to(self._device)
-        print(state.device)
+        #print(state.device)
         if training:
             rand = np.random.random_sample()
             if rand < self._epsilon:
