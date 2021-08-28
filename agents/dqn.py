@@ -74,7 +74,7 @@ class DQNAgent():
     def choose_action(self, state, training=False):
         state = state[np.newaxis, :]
         state = torch.from_numpy(state.astype(np.float32))
-        #state = state.to(self._device)
+        state = state.to(self._device)
         if training:
             rand = np.random.random_sample()
             if rand < self._epsilon:
