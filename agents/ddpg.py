@@ -144,12 +144,12 @@ class DDPGAgent():
             high = torch.from_numpy(self._env.action_space.high).to(self._device)
             action = torch.clip(action, min=low, max=high)
 
-            return action.detach().numpy()
+            return action.detach().cpu().numpy()
         else:
             # no need for gradient track
             with torch.no_grad():
                 action = self._policy_network(state)[0]
-            return action.numpy()
+            return action.cpu().numpy()
 
     def train(self):
         # check if there as enough samples in the buffer
