@@ -136,7 +136,8 @@ class DDPGAgent():
             # add gaussian noise
             print(action)
             print(self._noise)
-            action = action + torch.normal(0, self._noise, size=action.shape)
+            print(torch.normal(0, self._noise, size=action.shape))
+            action = action + torch.normal(0, self._noise, size=action.shape).to(self._device)
 
             # clip final action into environment action low-high boundary
             low = torch.from_numpy(self._env.action_space.low)
