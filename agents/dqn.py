@@ -75,6 +75,7 @@ class DQNAgent():
         state = state[np.newaxis, :]
         state = torch.from_numpy(state.astype(np.float32))
         state = state.to(self._device)
+        #print(state.device)
         if training:
             rand = np.random.random_sample()
             if rand < self._epsilon:
@@ -83,9 +84,9 @@ class DQNAgent():
             else:
                 #action = np.argmax(self._q_network(state).cpu())
                 action = torch.argmax(self._q_network(state), dim=1, keepdim=True)
-                return action.detach().numpy()
+                return action.detach().item()
         else:
-            return torch.argmax(self._q_network(state), dim=1, keepdim=True).detach().numpy()
+            return torch.argmax(self._q_network(state), dim=1, keepdim=True).detach().item()
             #return np.argmax(self._q_network(state).cpu()).detach().numpy()
 
     def train(self):
