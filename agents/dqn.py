@@ -67,7 +67,7 @@ class DQNAgent():
     def _update_target_network(self):
         self._q_network_target.load_state_dict(self._q_network.state_dict())
 
-    def store_experience(self, state, action, new_state, reward, done):
+    def store_transition(self, state, action, new_state, reward, done):
         self._buffer.store_transition(state, action, new_state, reward, done)
 
     @torch.no_grad()
