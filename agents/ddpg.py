@@ -88,6 +88,8 @@ class DDPGAgent():
         :param noise_decay_rate: The rate which the noise will decay during training (It is applied after each run of train method)
         :param polyak: The parameters which determines the copying rate of online network weights to target network weights
         """
+        # set device GPU/CPU
+        self._device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
         self._env = env
         self._gamma = gamma
@@ -110,14 +112,14 @@ class DDPGAgent():
         # create Q network and its target
         self._q_network = QNetwork(self._env.observation_space.shape[0],
                                    self._env.action_space.shape[0],
-                                   learning_rate=self._q_learning_rate)
-        self._q_network_target = copy.deepcopy(self._q_network)
+                                   learning_rate=self._q_learning_rate).to(self._device)
+        self._q_network_target = copy.deepcopy(self._q_network).to(self._device)
 
         # create policy network and its target
         self._policy_network = PolicyNetwork(self._env.observation_space.shape[0],
                                              self._env.action_space.shape[0],
-                                             learning_rate=self._policy_learning_rate)
-        self._policy_network_target = copy.deepcopy(self._policy_network)
+                                             learning_rate=self._policy_learning_rate).to(self._device)
+        self._policy_network_target = copy.deepcopy(self._policy_network).to(self._device)
 
         # initialize training counter
         self._train_counter = 0
@@ -125,6 +127,7 @@ class DDPGAgent():
     def choose_action(self, state, training=False):
         state = state[np.newaxis, :]
         state = torch.from_numpy(state.astype(np.float32))
+        state = state.to(self._device)
         # if training
         if training:
             # push action into policy network
@@ -154,11 +157,11 @@ class DDPGAgent():
         states, actions, next_states, rewards, dones = self._buffer.sample(self._batch_size)
 
         # convert to tensors
-        states = torch.from_numpy(states.astype(np.float32))
-        actions = torch.from_numpy(actions.astype(np.float32))
-        next_states = torch.from_numpy(next_states.astype(np.float32))
-        rewards = torch.from_numpy(rewards.astype(np.float32))
-        dones = torch.from_numpy(dones.astype(np.int8))
+        states = torch.from_numpy(states.astype(np.float32)).to(self._device)
+        actions = torch.from_numpy(actions.astype(np.float32)).to(self._device)
+        next_states = torch.from_numpy(next_states.astype(np.float32)).to(self._device)
+        rewards = torch.from_numpy(rewards.astype(np.float32)).to(self._device)
+        dones = torch.from_numpy(dones.astype(np.int8)).to(self._device)
 
         # compute targets
         mu_next_states = self._policy_network_target(next_states)
