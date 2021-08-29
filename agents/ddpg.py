@@ -33,11 +33,21 @@ class QNetwork(torch.nn.Module):
 
 
 class PolicyNetwork(torch.nn.Module):
-    def __init__(self, state_dim, action_dim, learning_rate):
+    def __init__(self, state_dim, action_space, learning_rate):
         super().__init__()
 
         self._state_dim = state_dim
-        self._action_dim = action_dim
+        #self._action_dim = action_dim
+
+        self._action_space = action_space
+        self._action_dim = self._action_space.shape[0]
+
+        # scale tanh layer with this
+        self._action_space_scale = abs(self._action_space.low - self._action_space.high).item() / 2
+
+        # bias tanh layer after scaling with this
+        self._action_space_bias = (self._action_space.high + self._action_space.low).item() / 2
+
         self._learning_rate = learning_rate
 
         # create layers
@@ -46,6 +56,7 @@ class PolicyNetwork(torch.nn.Module):
         self._fc_layer2 = torch.nn.Linear(256, 128)
         self._activation2 = torch.nn.ReLU()
         self._fc_layer3 = torch.nn.Linear(128, self._action_dim)
+        self._activation_tanh = torch.nn.Tanh()
 
         # create optimizer
         self.optimizer = torch.optim.SGD(params=self.parameters(), lr=self._learning_rate)
@@ -56,6 +67,9 @@ class PolicyNetwork(torch.nn.Module):
         x = self._fc_layer2(x)
         x = self._activation2(x)
         x = self._fc_layer3(x)
+        x = self._activation_tanh(x)
+        # apply scaling and the bias
+        x = self._action_space_scale * x + self._action_space_bias
         return x
 
 
@@ -117,7 +131,8 @@ class DDPGAgent():
 
         # create policy network and its target
         self._policy_network = PolicyNetwork(self._env.observation_space.shape[0],
-                                             self._env.action_space.shape[0],
+                                             #self._env.action_space.shape[0],
+                                             self._env.action_space,
                                              learning_rate=self._policy_learning_rate).to(self._device)
         self._policy_network_target = copy.deepcopy(self._policy_network).to(self._device)
 
