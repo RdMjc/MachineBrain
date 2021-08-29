@@ -43,10 +43,10 @@ class PolicyNetwork(torch.nn.Module):
         self._action_dim = self._action_space.shape[0]
 
         # scale tanh layer with this
-        self._action_space_scale = abs(self._action_space.low - self._action_space.high).item() / 2
+        self._action_space_scale = abs(self._action_space.low - self._action_space.high)[0] / 2
 
         # bias tanh layer after scaling with this
-        self._action_space_bias = (self._action_space.high + self._action_space.low).item() / 2
+        self._action_space_bias = (self._action_space.high + self._action_space.low)[0] / 2
 
         self._learning_rate = learning_rate
 
