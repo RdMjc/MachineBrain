@@ -33,11 +33,21 @@ class QNetwork(torch.nn.Module):
 
 
 class PolicyNetwork(torch.nn.Module):
-    def __init__(self, state_dim, action_dim, learning_rate):
+    def __init__(self, state_dim, action_space, learning_rate):
         super().__init__()
 
         self._state_dim = state_dim
-        self._action_dim = action_dim
+        #self._action_dim = action_dim
+
+        self._action_space = action_space
+        self._action_dim = self._action_space.shape[0]
+
+        # scale tanh layer with this
+        self._action_space_scale = abs(self._action_space.low - self._action_space.high)[0] / 2
+
+        # bias tanh layer after scaling with this
+        self._action_space_bias = (self._action_space.high + self._action_space.low)[0] / 2
+
         self._learning_rate = learning_rate
 
         # create layers
@@ -58,6 +68,8 @@ class PolicyNetwork(torch.nn.Module):
         x = self._activation2(x)
         x = self._fc_layer3(x)
         x = self._tanh_layer(x)
+        # apply scaling and the bias
+        x = self._action_space_scale * x + self._action_space_bias
         return x
 
 
@@ -117,8 +129,8 @@ class TD3Agent():
 
         # create Q network 1 and its target
         self._q_network1 = QNetwork(self._env.observation_space.shape[0],
-                                   self._env.action_space.shape[0],
-                                   learning_rate=self._q_learning_rate).to(self._device)
+                                    self._env.action_space.shape[0],
+                                    learning_rate=self._q_learning_rate).to(self._device)
         self._q_network1_target = copy.deepcopy(self._q_network1).to(self._device)
 
         # create Q network 2 and its target
@@ -129,7 +141,8 @@ class TD3Agent():
 
         # create policy network and its target
         self._policy_network = PolicyNetwork(self._env.observation_space.shape[0],
-                                             self._env.action_space.shape[0],
+                                             #self._env.action_space.shape[0],
+                                             self._env.action_space,
                                              learning_rate=self._policy_learning_rate).to(self._device)
         self._policy_network_target = copy.deepcopy(self._policy_network).to(self._device)
 
@@ -141,8 +154,8 @@ class TD3Agent():
         state = torch.from_numpy(state.astype(np.float32))
         state = state.to(self._device)
         if uniform_random:
-            #action = torch.normal(0.0, high/2, size=(self._env.action_space.shape[0], 1))
-            action = np.random.normal(0, self._env.action_space.high/2, size=(self._env.action_space.shape[0]))
+            # action = torch.normal(0.0, high/2, size=(self._env.action_space.shape[0], 1))
+            action = np.random.normal(0, self._env.action_space.high / 2, size=(self._env.action_space.shape[0]))
             return action
         # if training
         if training:
@@ -202,8 +215,8 @@ class TD3Agent():
             Q_min, indices = torch.min(Q_values, dim=1, keepdim=True)
 
             # calculate y
-            #y = rewards + self._gamma * (1 - dones) * Q_min
-            y = rewards + self._gamma * torch.mul((1-dones), Q_min)
+            # y = rewards + self._gamma * (1 - dones) * Q_min
+            y = rewards + self._gamma * torch.mul((1 - dones), Q_min)
 
         # update Q1
         loss_fn = torch.nn.MSELoss()
@@ -229,7 +242,7 @@ class TD3Agent():
             self._policy_network.optimizer.zero_grad()
             meanval.backward()
             # clip gradients to prevent exploding gradients
-            #torch.nn.utils.clip_grad_norm_(self._policy_network.parameters(), 1)
+            # torch.nn.utils.clip_grad_norm_(self._policy_network.parameters(), 1)
             self._policy_network.optimizer.step()
 
             # update target networks
@@ -242,13 +255,19 @@ class TD3Agent():
 
     def _update_target_network_weights(self):
         # copy Q1 weights
-        for target_network_param, network_param in zip(self._q_network1_target.parameters(), self._q_network1.parameters()):
-            target_network_param.data.copy_((1 - self._polyak) * network_param.data + self._polyak*target_network_param.data)
+        for target_network_param, network_param in zip(self._q_network1_target.parameters(),
+                                                       self._q_network1.parameters()):
+            target_network_param.data.copy_(
+                (1 - self._polyak) * network_param.data + self._polyak * target_network_param.data)
 
         # copy Q2 weights
-        for target_network_param, network_param in zip(self._q_network2_target.parameters(), self._q_network2.parameters()):
-            target_network_param.data.copy_((1 - self._polyak) * network_param.data + self._polyak*target_network_param.data)
+        for target_network_param, network_param in zip(self._q_network2_target.parameters(),
+                                                       self._q_network2.parameters()):
+            target_network_param.data.copy_(
+                (1 - self._polyak) * network_param.data + self._polyak * target_network_param.data)
 
         # copy policy weights
-        for target_network_param, network_param in zip(self._policy_network_target.parameters(), self._policy_network.parameters()):
-            target_network_param.data.copy_((1 - self._polyak) * network_param.data + self._polyak*target_network_param.data)
+        for target_network_param, network_param in zip(self._policy_network_target.parameters(),
+                                                       self._policy_network.parameters()):
+            target_network_param.data.copy_(
+                (1 - self._polyak) * network_param.data + self._polyak * target_network_param.data)
